@@ -98,7 +98,9 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
-              global_batch_size=train_batch_size),
+              global_batch_size=train_batch_size,
+              aug_type=common.Augmentation(
+                  type='randaug', randaug=common.RandAugment())),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
