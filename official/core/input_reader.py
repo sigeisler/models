@@ -47,6 +47,7 @@ class InputReader:
                decoder_fn: Optional[Callable[..., Any]] = None,
                combine_fn: Optional[Callable[..., Any]] = None,
                sample_fn: Optional[Callable[..., Any]] = None,
+               repeated_aug: Optional[int] = 1,
                parser_fn: Optional[Callable[..., Any]] = None,
                transform_and_batch_fn: Optional[Callable[
                    [tf.data.Dataset, Optional[tf.distribute.InputContext]],
@@ -66,6 +67,10 @@ class InputReader:
       sample_fn: An optional `callable` that takes a `tf.data.Dataset` object as
         input and outputs the transformed dataset. It performs sampling on the
         decoded raw tensors dict before the parser_fn.
+      repeated_aug: An optional `int` that determines how often the dataset is
+        replicated within a epoch to perform multiple (random) augmentation. It
+        is applied right after calling the `sample_fn` and before `parser_fn`.
+        Only takes effect if caching is disabled.
       parser_fn: An optional `callable` that takes the decoded raw tensors dict
         and parse them into a dictionary of tensors that can be consumed by the
         model. It will be executed after decoder_fn.
@@ -125,6 +130,8 @@ class InputReader:
     self._decoder_fn = decoder_fn
     self._combine_fn = combine_fn
     self._sample_fn = sample_fn
+    self._repeated_aug = repeated_aug
+    self._use_repeated_aug = self._repeated_aug > 1
     self._parser_fn = parser_fn
     self._transform_and_batch_fn = transform_and_batch_fn
     self._postprocess_fn = postprocess_fn
@@ -284,7 +291,7 @@ class InputReader:
         read_config=read_config)
 
     # If cache is enabled, we will call `repeat()` later after `cache()`.
-    if self._is_training and not self._cache:
+    if self._is_training and not (self._cache or self._use_repeated_aug):
       dataset = dataset.repeat()
     return dataset
 
@@ -298,21 +305,23 @@ class InputReader:
                        'is not loaded from tfds.')
 
   def _read_decode_and_parse_dataset(
-      self,
-      matched_files: Union[Dict[str, List[str]], List[str]],
-      dataset_fn,
-      batch_size: int,
-      input_context: Optional[tf.distribute.InputContext] = None,
-      tfds_builder: bool = False) -> tf.data.Dataset:
+          self,
+          matched_files: Union[Dict[str, List[str]], List[str]],
+          dataset_fn,
+          batch_size: int,
+          input_context: Optional[tf.distribute.InputContext] = None,
+          tfds_builder: bool = False) -> tf.data.Dataset:
     """Returns a tf.data.Dataset object after reading, decoding, and parsing."""
 
     def _files_to_dataset(files: List[str]) -> tf.data.Dataset:
+      if self._repeated_aug >= 1:
+        raise NotImplementedError('Repeated aug. only supports tfds.')
       if len(files) > 1:
-        if input_context and (len(files) < input_context.num_input_pipelines):
+        if (input_context and (len(files) < input_context.num_input_pipelines)):
           logging.warn(
-              'The number of files %d is less than the number of input pipelines '
-              '%d. We will send all input files to every worker. '
-              'Please consider sharding your data into more files.', len(files),
+              'The number of files %d is less than the number of input '
+              'pipelines %d. We will send all input files to every worker. '
+              'Consider sharding your data into more files.', len(files),
               input_context.num_input_pipelines)
           return self._read_files_then_shard(files, dataset_fn, input_context)
         else:
@@ -332,7 +341,16 @@ class InputReader:
       return ds
 
     if tfds_builder:
-      dataset = self._read_tfds(input_context)
+      if self._use_repeated_aug and not self._cache:
+        dataset = self._read_tfds(None)
+        dataset = dataset.flat_map(lambda image: self._repeated_aug * [image])
+        if input_context:
+          dataset = dataset.shard(input_context.num_input_pipelines,
+                                  input_context.input_pipeline_id)
+        dataset = dataset.repeat()
+      else:
+        dataset = self._read_tfds(input_context)
+
       dataset = _shuffle_and_decode(dataset)
     elif isinstance(matched_files, (list, tuple)):
       dataset = _files_to_dataset(matched_files)
@@ -348,6 +366,7 @@ class InputReader:
 
     if self._sample_fn is not None:
       dataset = dataset.apply(self._sample_fn)
+
     dataset = _maybe_map_fn(dataset, self._parser_fn)
 
     if self._cache:
