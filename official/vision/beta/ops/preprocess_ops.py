@@ -557,33 +557,33 @@ def random_horizontal_flip(image, normalized_boxes=None, masks=None, seed=1):
     return image, normalized_boxes, masks
 
 
-def color_jitter(image, brightness=0., contrast=0., saturation=0.):
-  image = random_brightness(image, brightness)
-  image = random_contrast(image, contrast)
-  image = random_saturation(image, saturation)
+def color_jitter(image, brightness=0., contrast=0., saturation=0., seed=None):
+  image = random_brightness(image, brightness, seed=seed)
+  image = random_contrast(image, contrast, seed=seed)
+  image = random_saturation(image, saturation, seed=seed)
   return image
 
 
-def random_brightness(image, brightness=0.):
+def random_brightness(image, brightness=0., seed=None):
   assert brightness >= 0 and brightness <= 1., '`brightness` must be in [0, 1]'
   brightness = tf.random.uniform(
       [], max(0, 1 - brightness), 1 + brightness, seed=seed)
   return _blend_images(image, tf.zeros_like(image), brightness)
 
 
-def random_contrast(image, contrast=0.):
+def random_contrast(image, contrast=0., seed=None):
   assert contrast >= 0 and contrast <= 1., '`contrast` must be in [0, 1]'
   contrast = tf.random.uniform(
       [], max(0, 1 - contrast), 1 + contrast, seed=seed)
-  mean = tf.reduce_mean(tf.image.rgb_to_grayscale(img), keepdim=True)
+  mean = tf.reduce_mean(tf.image.rgb_to_grayscale(image), keepdims=True)
   return _blend_images(image, mean, contrast)
 
 
-def random_saturation(image, saturation=0.):
+def random_saturation(image, saturation=0., seed=None):
   assert saturation >= 0 and saturation <= 1., '`saturation` must be in [0, 1]'
   saturation = tf.random.uniform(
       [], max(0, 1 - saturation), 1 + saturation, seed=seed)
-  return _blend_images(image, tf.image.rgb_to_grayscale(img), saturation)
+  return _blend_images(image, tf.image.rgb_to_grayscale(image), saturation)
 
 
 def _blend_images(image1, image2, ratio=0.):

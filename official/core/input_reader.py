@@ -120,7 +120,7 @@ class InputReader:
     self._tfds_split = params.tfds_split
     self._tfds_as_supervised = params.tfds_as_supervised
     self._tfds_skip_decoding_feature = params.tfds_skip_decoding_feature
-    self._repeated_aug = params.repeated_aug
+    self._repeated_aug = int(params.repeated_aug)
 
     self._dataset_fn = dataset_fn
     self._decoder_fn = decoder_fn
@@ -338,7 +338,7 @@ class InputReader:
     if tfds_builder:
       if self._use_repeated_aug and not self._cache:
         dataset = self._read_tfds(None)
-        dataset = dataset.flat_map(lambda image: self._repeated_aug * [image])
+        dataset = dataset.flat_map(lambda image: tf.data.Dataset.from_tensors(image).repeat(self._repeated_aug))
         if input_context:
           dataset = dataset.shard(input_context.num_input_pipelines,
                                   input_context.input_pipeline_id)

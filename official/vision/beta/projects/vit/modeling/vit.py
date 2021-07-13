@@ -77,36 +77,36 @@ VIT_SPECS = {
 
 
 class AddPositionEmbs(tf.keras.layers.Layer):
-    """Adds (optionally learned) positional embeddings to the inputs."""
+  """Adds (optionally learned) positional embeddings to the inputs."""
 
-    def __init__(self, posemb_init=None, **kwargs):
-        super().__init__(**kwargs)
-        self.posemb_init = posemb_init
+  def __init__(self, posemb_init=None, **kwargs):
+    super().__init__(**kwargs)
+    self.posemb_init = posemb_init
 
-    def build(self, inputs_shape):
-        pos_emb_shape = (1, inputs_shape[1], inputs_shape[2])
-        self.pos_embedding = self.add_weight(
-            'pos_embedding', pos_emb_shape, initializer=self.posemb_init)
+  def build(self, inputs_shape):
+    pos_emb_shape = (1, inputs_shape[1], inputs_shape[2])
+    self.pos_embedding = self.add_weight(
+        'pos_embedding', pos_emb_shape, initializer=self.posemb_init)
 
-    def call(self, inputs, inputs_positions=None):
-        # inputs.shape is (batch_size, seq_len, emb_dim).
-        pos_embedding = tf.cast(self.pos_embedding, inputs.dtype)
+  def call(self, inputs, inputs_positions=None):
+    # inputs.shape is (batch_size, seq_len, emb_dim).
+    pos_embedding = tf.cast(self.pos_embedding, inputs.dtype)
 
-        return inputs + pos_embedding
+    return inputs + pos_embedding
 
 
 class TokenLayer(tf.keras.layers.Layer):
-    """A simple layer to wrap token parameters."""
+  """A simple layer to wrap token parameters."""
 
-    def build(self, inputs_shape):
-        self.cls = self.add_weight(
-            'cls', (1, 1, inputs_shape[-1]), initializer='zeros')
+  def build(self, inputs_shape):
+    self.cls = self.add_weight(
+        'cls', (1, 1, inputs_shape[-1]), initializer='zeros')
 
-    def call(self, inputs):
-        cls = tf.cast(self.cls, inputs.dtype)
-        cls = cls + tf.zeros_like(inputs[:, 0:1])  # A hacky way to tile.
-        x = tf.concat([cls, inputs], axis=1)
-        return x
+  def call(self, inputs):
+    cls = tf.cast(self.cls, inputs.dtype)
+    cls = cls + tf.zeros_like(inputs[:, 0:1])  # A hacky way to tile.
+    x = tf.concat([cls, inputs], axis=1)
+    return x
 
 
 class Encoder(tf.keras.layers.Layer):

@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: VIT Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
@@ -16,7 +16,21 @@
                 "--mode=train_and_eval",
                 "--params_override={task: {train_data: {global_batch_size: 16, input_path: \"\", tfds_name: imagenet2012, tfds_split: train}, validation_data: {global_batch_size: 16, input_path: \"\", tfds_name: imagenet2012, tfds_split: validation}}}",
                 "--model_dir=./runs"
-            ]   
+            ]
+        },
+        {
+            "name": "Python: DEIT Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env",
+            "args": [
+                "--experiment=deit_imagenet_pretrain",
+                "--mode=train_and_eval",
+                "--params_override={task: {train_data: {global_batch_size: 16, input_path: \"\", tfds_name: imagenet2012, tfds_split: train}, validation_data: {global_batch_size: 16, input_path: \"\", tfds_name: imagenet2012, tfds_split: validation}}}",
+                "--model_dir=./runs"
+            ]
         }
     ]
 }
