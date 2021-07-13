@@ -36,7 +36,8 @@ class VisionTransformer(hyperparams.Config):
   """VisionTransformer config."""
   model_name: str = 'vit-b16'
   # pylint: disable=line-too-long
-  classifier: str = 'token'  # 'token' or 'gap'. If set to 'token', an extra classification token is added to sequence.
+  # 'token' or 'gap'. If set to 'token', an extra classification token is added to sequence.
+  classifier: str = 'token'
   # pylint: enable=line-too-long
   representation_size: int = 0
   hidden_size: int = 1

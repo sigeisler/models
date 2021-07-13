@@ -69,6 +69,7 @@ class Parser(parser.Parser):
                decode_jpeg_only: bool = True,
                aug_rand_hflip: bool = True,
                aug_type: Optional[common.Augmentation] = None,
+               color_jitter: float = 0.4,
                is_multilabel: bool = False,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
@@ -85,6 +86,7 @@ class Parser(parser.Parser):
         horizontal flip.
       aug_type: An optional Augmentation object to choose from AutoAugment and
         RandAugment.
+      color_jitter: if > 0 the input image will be augmented by color jitter.
       is_multilabel: A `bool`, whether or not each example has multiple labels.
       dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
         or 'bfloat16'.
@@ -120,6 +122,7 @@ class Parser(parser.Parser):
     else:
       self._augmenter = None
     self._label_field_key = label_field_key
+    self._color_jitter = color_jitter
     self._is_multilabel = is_multilabel
     self._decode_jpeg_only = decode_jpeg_only
 
@@ -155,7 +158,8 @@ class Parser(parser.Parser):
           image_bytes, image_shape)
       image = tf.cond(
           tf.reduce_all(tf.equal(tf.shape(cropped_image), image_shape)),
-          lambda: preprocess_ops.center_crop_image_v2(image_bytes, image_shape),
+          lambda: preprocess_ops.center_crop_image_v2(
+              image_bytes, image_shape),
           lambda: cropped_image)
     else:
       # Decodes image.
@@ -212,6 +216,11 @@ class Parser(parser.Parser):
     image = tf.image.resize(
         image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
     image.set_shape([self._output_size[0], self._output_size[1], 3])
+
+    # Color jitter.
+    if self._color_jitter > 0:
+      image = preprocess_ops.color_jitter(
+          image, self._color_jitter, self._color_jitter, self._color_jitter)
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image,

@@ -555,3 +555,36 @@ def random_horizontal_flip(image, normalized_boxes=None, masks=None, seed=1):
           lambda: masks)
 
     return image, normalized_boxes, masks
+
+
+def color_jitter(image, brightness=0., contrast=0., saturation=0.):
+  image = random_brightness(image, brightness)
+  image = random_contrast(image, contrast)
+  image = random_saturation(image, saturation)
+  return image
+
+
+def random_brightness(image, brightness=0.):
+  assert brightness >= 0 and brightness <= 1., '`brightness` must be in [0, 1]'
+  brightness = tf.random.uniform(
+      [], max(0, 1 - brightness), 1 + brightness, seed=seed)
+  return _blend_images(image, tf.zeros_like(image), brightness)
+
+
+def random_contrast(image, contrast=0.):
+  assert contrast >= 0 and contrast <= 1., '`contrast` must be in [0, 1]'
+  contrast = tf.random.uniform(
+      [], max(0, 1 - contrast), 1 + contrast, seed=seed)
+  mean = tf.reduce_mean(tf.image.rgb_to_grayscale(img), keepdim=True)
+  return _blend_images(image, mean, contrast)
+
+
+def random_saturation(image, saturation=0.):
+  assert saturation >= 0 and saturation <= 1., '`saturation` must be in [0, 1]'
+  saturation = tf.random.uniform(
+      [], max(0, 1 - saturation), 1 + saturation, seed=seed)
+  return _blend_images(image, tf.image.rgb_to_grayscale(img), saturation)
+
+
+def _blend_images(image1, image2, ratio=0.):
+  return tf.clip_by_value(ratio * image1 + (1.0 - ratio) * image2, 0, 255)
