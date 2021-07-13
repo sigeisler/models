@@ -74,6 +74,10 @@ class DataConfig(base_config.Config):
       features. The main use case is to skip the image/video decoding for better
       performance.
     seed: An optional seed to use for deterministic shuffling/preprocessing.
+    repeated_aug: An optional `int` that determines how often the dataset is
+        replicated within a epoch to perform multiple (random) augmentation. It
+        is applied right after calling the `sample_fn` and before `parser_fn`.
+        Only takes effect if caching is disabled.
   """
   input_path: Union[Sequence[str], str, base_config.Config] = ""
   tfds_name: str = ""
@@ -94,6 +98,7 @@ class DataConfig(base_config.Config):
   tfds_as_supervised: bool = False
   tfds_skip_decoding_feature: str = ""
   seed: Optional[int] = None
+  repeated_aug: Optional[int] = 1
 
 
 @dataclasses.dataclass

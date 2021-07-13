@@ -28,7 +28,7 @@ class Transformer(hyperparams.Config):
   num_heads: int = 1
   num_layers: int = 1
   attention_dropout_rate: float = 0.0
-  dropout_rate: float = 0.0
+  dropout_rate: float = 0.1
 
 
 @dataclasses.dataclass
@@ -36,7 +36,8 @@ class VisionTransformer(hyperparams.Config):
   """VisionTransformer config."""
   model_name: str = 'vit-b16'
   # pylint: disable=line-too-long
-  classifier: str = 'token'  # 'token' or 'gap'. If set to 'token', an extra classification token is added to sequence.
+  # 'token' or 'gap'. If set to 'token', an extra classification token is added to sequence.
+  classifier: str = 'token'
   # pylint: enable=line-too-long
   representation_size: int = 0
   hidden_size: int = 1

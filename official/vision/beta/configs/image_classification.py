@@ -44,6 +44,7 @@ class DataConfig(cfg.DataConfig):
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'image/class/label'
   decode_jpeg_only: bool = True
+  repeated_aug: int = 1
 
   # Keep for backward compatibility.
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.

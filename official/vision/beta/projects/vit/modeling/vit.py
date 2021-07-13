@@ -31,6 +31,18 @@ VIT_SPECS = {
             patch_size=16,
             transformer=dict(mlp_dim=1, num_heads=1, num_layers=1),
         ),
+    'vit-ti16':
+        dict(
+            hidden_size=192,
+            patch_size=16,
+            transformer=dict(mlp_dim=3072, num_heads=3, num_layers=12),
+        ),
+    'vit-s16':
+        dict(
+            hidden_size=384,
+            patch_size=16,
+            transformer=dict(mlp_dim=3072, num_heads=6, num_layers=12),
+        ),
     'vit-b16':
         dict(
             hidden_size=768,
@@ -108,7 +120,7 @@ class Encoder(tf.keras.layers.Layer):
                attention_dropout_rate=0.1,
                kernel_regularizer=None,
                inputs_positions=None,
-               init_stochastic_depth_rate=0.1,
+               init_stochastic_depth_rate=0.0,
                **kwargs):
     super().__init__(**kwargs)
     self._num_layers = num_layers
@@ -163,7 +175,7 @@ class VisionTransformer(tf.keras.Model):
                num_layers=12,
                attention_dropout_rate=0.0,
                dropout_rate=0.1,
-               init_stochastic_depth_rate=0.1,
+               init_stochastic_depth_rate=0.0,
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
                patch_size=16,
                hidden_size=768,

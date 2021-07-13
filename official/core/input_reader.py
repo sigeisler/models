@@ -47,7 +47,6 @@ class InputReader:
                decoder_fn: Optional[Callable[..., Any]] = None,
                combine_fn: Optional[Callable[..., Any]] = None,
                sample_fn: Optional[Callable[..., Any]] = None,
-               repeated_aug: Optional[int] = 1,
                parser_fn: Optional[Callable[..., Any]] = None,
                transform_and_batch_fn: Optional[Callable[
                    [tf.data.Dataset, Optional[tf.distribute.InputContext]],
@@ -67,10 +66,6 @@ class InputReader:
       sample_fn: An optional `callable` that takes a `tf.data.Dataset` object as
         input and outputs the transformed dataset. It performs sampling on the
         decoded raw tensors dict before the parser_fn.
-      repeated_aug: An optional `int` that determines how often the dataset is
-        replicated within a epoch to perform multiple (random) augmentation. It
-        is applied right after calling the `sample_fn` and before `parser_fn`.
-        Only takes effect if caching is disabled.
       parser_fn: An optional `callable` that takes the decoded raw tensors dict
         and parse them into a dictionary of tensors that can be consumed by the
         model. It will be executed after decoder_fn.
@@ -125,12 +120,12 @@ class InputReader:
     self._tfds_split = params.tfds_split
     self._tfds_as_supervised = params.tfds_as_supervised
     self._tfds_skip_decoding_feature = params.tfds_skip_decoding_feature
+    self._repeated_aug = params.repeated_aug
 
     self._dataset_fn = dataset_fn
     self._decoder_fn = decoder_fn
     self._combine_fn = combine_fn
     self._sample_fn = sample_fn
-    self._repeated_aug = repeated_aug
     self._use_repeated_aug = self._repeated_aug > 1
     self._parser_fn = parser_fn
     self._transform_and_batch_fn = transform_and_batch_fn
