@@ -33,11 +33,6 @@ def _maybe_map_fn(dataset: tf.data.Dataset,
   return dataset if fn is None else dataset.map(
       fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-def _flat_map_fn(dataset: tf.data.Dataset,
-                       fn: Callable[..., Any] = None) -> tf.data.Dataset:
-  """Calls dataset.map if a valid function is passed in."""
-  return dataset.map(fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-
 class InputReader:
   """Input reader that returns a tf.data.Dataset instance."""
 
@@ -342,7 +337,7 @@ class InputReader:
     if tfds_builder:
       if self._use_repeated_aug and not self._cache:
         dataset = self._read_tfds(None)
-        dataset = _flat_map_fn(dataset, lambda image: tf.data.Dataset.from_tensors(image).repeat(self._repeated_aug))
+        dataset = dataset.flat_map(lambda image: tf.data.Dataset.from_tensors(image).repeat(self._repeated_aug))
         if input_context:
           dataset = dataset.shard(input_context.num_input_pipelines,
                                   input_context.input_pipeline_id)
