@@ -84,7 +84,8 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
   train_batch_size = 1024
   eval_batch_size = 1024
-  steps_per_epoch = IMAGENET_TRAIN_EXAMPLES // train_batch_size
+  repeated_aug = 3
+  steps_per_epoch = IMAGENET_TRAIN_EXAMPLES * repeated_aug // train_batch_size
   config = cfg.ExperimentConfig(
       task=ImageClassificationTask(
           model=ImageClassificationModel(
@@ -102,7 +103,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
-              repeated_aug=3,
+              repeated_aug=repeated_aug,
               color_jitter=0.4,
               random_erasing=common.RandomErasing(),
               aug_type=common.Augmentation(
@@ -124,7 +125,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
                   'adamw': {
                       'weight_decay_rate': 0.05,
                       'include_in_weight_decay': r'.*(kernel|weight):0$',
-                  }
+                      'gradient_clip_norm': 0.0}
               },
               'learning_rate': {
                   'type': 'cosine',
@@ -186,12 +187,13 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
                   'adamw': {
                       'weight_decay_rate': 0.3,
                       'include_in_weight_decay': r'.*(kernel|weight):0$',
+                      'gradient_clip_norm': 0.0
                   }
               },
               'learning_rate': {
                   'type': 'cosine',
                   'cosine': {
-                      'initial_learning_rate': 0.003,
+                      'initial_learning_rate': 0.003 * train_batch_size / 4096,
                       'decay_steps': 300 * steps_per_epoch,
                   }
               },

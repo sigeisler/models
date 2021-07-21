@@ -178,7 +178,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         dtype=tf.float32)
 
     if self._stochastic_depth_drop_rate:
-      self._stochastic_depth = nn_layers.StochasticDepth(
+      self._stochastic_depth = StochasticDepth(
           self._stochastic_depth_drop_rate)
     else:
       self._stochastic_depth = None
@@ -228,7 +228,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     base_config = super(TransformerEncoderBlock, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def call(self, inputs):
+  def call(self, inputs, training=None):
     """Transformer self-attention encoder block call.
     Args:
       inputs: a single tensor or a list of tensors.
