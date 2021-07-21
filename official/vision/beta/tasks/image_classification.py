@@ -107,6 +107,8 @@ class ImageClassificationTask(base_task.Task):
         decode_jpeg_only=params.decode_jpeg_only,
         aug_rand_hflip=params.aug_rand_hflip,
         aug_type=params.aug_type,
+        color_jitter=params.color_jitter,
+        random_erasing=params.random_erasing,
         is_multilabel=is_multilabel,
         dtype=params.dtype)
 

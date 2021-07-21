@@ -219,7 +219,7 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         tf.errors.InvalidArgumentError,
         r'Expected \'tf.Tensor\(False, shape=\(\), dtype=bool\)\' to be true. '
-        r'Summarized data: ({})'.format(value)):
+            r'Summarized data: ({})'.format(value)):
       augmenter.distort(image)
 
   def test_invalid_custom_policy_ndim(self):
@@ -229,8 +229,8 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     policy = [[policy]]
 
     with self.assertRaisesRegex(
-        ValueError,
-        r'Expected \(:, :, 3\) but got \(1, 1, 2, 2, 3\).'):
+            ValueError,
+            r'Expected \(:, :, 3\) but got \(1, 1, 2, 2, 3\).'):
       augment.AutoAugment(policies=policy)
 
   def test_invalid_custom_policy_shape(self):
@@ -239,8 +239,8 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
               [('TranslateY', 0.6, 3, 1), ('Rotate', 0.9, 3, 1)]]
 
     with self.assertRaisesRegex(
-        ValueError,
-        r'Expected \(:, :, 3\) but got \(2, 2, 4\)'):
+            ValueError,
+            r'Expected \(:, :, 3\) but got \(2, 2, 4\)'):
       augment.AutoAugment(policies=policy)
 
   def test_invalid_custom_policy_key(self):
@@ -252,6 +252,15 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaisesRegex(KeyError, '\'AAAAA\''):
       augmenter.distort(image)
+
+  def test_random_erase(self):
+    image = tf.zeros((224, 224, 3), dtype=tf.float32)
+    augmenter = augment.RandomErasing(probability=1., max_count=10)
+
+    aug_image = augmenter.distort(image)
+
+    self.assertEqual((224, 224, 3), aug_image.shape)
+    self.assertLess(0, tf.reduce_max(aug_image.shape))
 
 
 if __name__ == '__main__':

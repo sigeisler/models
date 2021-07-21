@@ -40,6 +40,8 @@ class DataConfig(cfg.DataConfig):
   aug_rand_hflip: bool = True
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
+  color_jitter: float = 0.
+  random_erasing: Optional[common.RandomErasing] = None
   file_type: str = 'tfrecord'
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'image/class/label'

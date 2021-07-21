@@ -69,7 +69,8 @@ class Parser(parser.Parser):
                decode_jpeg_only: bool = True,
                aug_rand_hflip: bool = True,
                aug_type: Optional[common.Augmentation] = None,
-               color_jitter: float = 0.4,
+               color_jitter: float = 0.,
+               random_erasing: Optional[common.RandomErasing] = None,
                is_multilabel: bool = False,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
@@ -123,6 +124,19 @@ class Parser(parser.Parser):
       self._augmenter = None
     self._label_field_key = label_field_key
     self._color_jitter = color_jitter
+    if random_erasing:
+      self._random_erasing = augment.RandomErasing(
+          probability=random_erasing.probability,
+          min_area=random_erasing.min_area,
+          max_area=random_erasing.max_area,
+          min_aspect=random_erasing.min_aspect,
+          max_aspect=random_erasing.max_aspect,
+          min_count=random_erasing.min_count,
+          max_count=random_erasing.max_count,
+          trials=random_erasing.trials
+      )
+    else:
+      self._random_erasing = None
     self._is_multilabel = is_multilabel
     self._decode_jpeg_only = decode_jpeg_only
 
@@ -226,6 +240,10 @@ class Parser(parser.Parser):
     image = preprocess_ops.normalize_image(image,
                                            offset=MEAN_RGB,
                                            scale=STDDEV_RGB)
+
+    # Random erasing after the image has been normalized
+    if self._random_erasing is not None:
+      image = self._random_erasing.distort(image)
 
     # Convert image to self._dtype.
     image = tf.image.convert_image_dtype(image, self._dtype)
