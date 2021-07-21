@@ -19,6 +19,7 @@ from six.moves import range
 import tensorflow as tf
 
 from official.vision.beta.ops import box_ops
+from official.vision.beta.ops import augment
 
 
 CENTER_CROP_FRACTION = 0.875
@@ -175,7 +176,7 @@ def resize_and_crop_image(image,
       max_offset = scaled_size - desired_size
       max_offset = tf.where(
           tf.less(max_offset, 0), tf.zeros_like(max_offset), max_offset)
-      offset = max_offset * tf.random.uniform([2,], 0, 1, seed=seed)
+      offset = max_offset * tf.random.uniform([2, ], 0, 1, seed=seed)
       offset = tf.cast(offset, tf.int32)
     else:
       offset = tf.zeros((2,), tf.int32)
@@ -278,7 +279,7 @@ def resize_and_crop_image_v2(image,
       max_offset = scaled_size - desired_size
       max_offset = tf.where(
           tf.math.less(max_offset, 0), tf.zeros_like(max_offset), max_offset)
-      offset = max_offset * tf.random.uniform([2,], 0, 1, seed=seed)
+      offset = max_offset * tf.random.uniform([2, ], 0, 1, seed=seed)
       offset = tf.cast(offset, tf.int32)
     else:
       offset = tf.zeros((2,), tf.int32)
@@ -568,23 +569,18 @@ def random_brightness(image, brightness=0., seed=None):
   assert brightness >= 0 and brightness <= 1., '`brightness` must be in [0, 1]'
   brightness = tf.random.uniform(
       [], max(0, 1 - brightness), 1 + brightness, seed=seed)
-  return _blend_images(image, tf.zeros_like(image), brightness)
+  return augment.brightness(image, brightness)
 
 
 def random_contrast(image, contrast=0., seed=None):
   assert contrast >= 0 and contrast <= 1., '`contrast` must be in [0, 1]'
   contrast = tf.random.uniform(
       [], max(0, 1 - contrast), 1 + contrast, seed=seed)
-  mean = tf.reduce_mean(tf.image.rgb_to_grayscale(image), keepdims=True)
-  return _blend_images(image, mean, contrast)
+  return augment.contrast(image, contrast)
 
 
 def random_saturation(image, saturation=0., seed=None):
   assert saturation >= 0 and saturation <= 1., '`saturation` must be in [0, 1]'
   saturation = tf.random.uniform(
       [], max(0, 1 - saturation), 1 + saturation, seed=seed)
-  return _blend_images(image, tf.image.rgb_to_grayscale(image), saturation)
-
-
-def _blend_images(image1, image2, ratio=0.):
-  return tf.clip_by_value(ratio * image1 + (1.0 - ratio) * image2, 0, 255)
+  return augment.blend(tf.image.rgb_to_grayscale(image), image, saturation)
