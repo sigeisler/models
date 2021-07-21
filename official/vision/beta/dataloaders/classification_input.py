@@ -69,7 +69,7 @@ class Parser(parser.Parser):
                decode_jpeg_only: bool = True,
                aug_rand_hflip: bool = True,
                aug_type: Optional[common.Augmentation] = None,
-               color_jitter: float = 0.4,
+               color_jitter: float = 0.0,
                is_multilabel: bool = False,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.

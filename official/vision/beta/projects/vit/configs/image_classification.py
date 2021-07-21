@@ -103,9 +103,9 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
-              repeated_aug=repeated_aug),
-          # aug_type=common.Augmentation(
-          #    type='randaug', randaug=common.RandAugment())),
+              repeated_aug=repeated_aug, 
+              aug_type=common.Augmentation(
+                  type='randaug', randaug=common.RandAugment())),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
@@ -167,9 +167,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
-              global_batch_size=train_batch_size,
-              aug_type=common.Augmentation(
-                  type='randaug', randaug=common.RandAugment())),
+              global_batch_size=train_batch_size),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
@@ -193,7 +191,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
               'learning_rate': {
                   'type': 'cosine',
                   'cosine': {
-                      'initial_learning_rate': 0.003,
+                      'initial_learning_rate': 0.003 * train_batch_size / 4096,
                       'decay_steps': 300 * steps_per_epoch,
                   }
               },
