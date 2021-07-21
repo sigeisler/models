@@ -628,7 +628,8 @@ def _apply_func_with_prob(func: Any, image: tf.Tensor, args: Any, prob: float):
 
 def select_and_apply_random_policy(policies: Any, image: tf.Tensor):
   """Select a random policy from `policies` and apply it to `image`."""
-  policy_to_select = tf.random.uniform([], maxval=len(policies), dtype=tf.int32)
+  policy_to_select = tf.random.uniform(
+      [], maxval=len(policies), dtype=tf.int32)
   # Note that using tf.case instead of tf.conds would result in significantly
   # larger graphs and would even break export for some larger policies.
   for (i, policy) in enumerate(policies):
@@ -672,12 +673,14 @@ REPLACE_FUNCS = frozenset({
 def level_to_arg(cutout_const: float, translate_const: float):
   """Creates a dict mapping image operation names to their arguments."""
 
-  no_arg = lambda level: ()
-  posterize_arg = lambda level: _mult_to_arg(level, 4)
-  solarize_arg = lambda level: _mult_to_arg(level, 256)
-  solarize_add_arg = lambda level: _mult_to_arg(level, 110)
-  cutout_arg = lambda level: _mult_to_arg(level, cutout_const)
-  translate_arg = lambda level: _translate_level_to_arg(level, translate_const)
+  def no_arg(level): return ()
+  def posterize_arg(level): return _mult_to_arg(level, 4)
+  def solarize_arg(level): return _mult_to_arg(level, 256)
+  def solarize_add_arg(level): return _mult_to_arg(level, 110)
+  def cutout_arg(level): return _mult_to_arg(level, cutout_const)
+
+  def translate_arg(level): return _translate_level_to_arg(
+      level, translate_const)
 
   args = {
       'AutoContrast': no_arg,
@@ -813,6 +816,7 @@ class AutoAugment(ImageAugment):
         tf_policy.append(_parse_policy_info(*policy_info))
       # Now build the tf policy that will apply the augmentation procedue
       # on image.
+
       def make_final_policy(tf_policy_):
 
         def final_policy(image_):
@@ -913,7 +917,8 @@ class RandAugment(ImageAugment):
                num_layers: int = 2,
                magnitude: float = 10.,
                cutout_const: float = 40.,
-               translate_const: float = 100.):
+               translate_const: float = 100.,
+               exclude_ops: List[str] = []):
     """Applies the RandAugment policy to images.
 
     Args:
@@ -925,6 +930,7 @@ class RandAugment(ImageAugment):
         [5, 10].
       cutout_const: multiplier for applying cutout.
       translate_const: multiplier for applying translation.
+      exclude_ops: exclude selected operations.
     """
     super(RandAugment, self).__init__()
 
@@ -937,6 +943,8 @@ class RandAugment(ImageAugment):
         'Color', 'Contrast', 'Brightness', 'Sharpness', 'ShearX', 'ShearY',
         'TranslateX', 'TranslateY', 'Cutout', 'SolarizeAdd'
     ]
+    self.available_ops = [
+        op for op in self.available_ops if op not in exclude_ops]
 
   def distort(self, image: tf.Tensor) -> tf.Tensor:
     """Applies the RandAugment policy to `image`.

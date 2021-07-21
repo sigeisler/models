@@ -145,6 +145,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
 
   return config
 
+
 @exp_factory.register_config_factory('deit_imagenet_pretrain')
 def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
@@ -173,7 +174,8 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
               color_jitter=0.4,
               random_erasing=common.RandomErasing(),
               aug_type=common.Augmentation(
-                  type='randaug', randaug=common.RandAugment(magnitude=9))),
+                  type='randaug', randaug=common.RandAugment(
+                      magnitude=9, exclude_ops=['Cutout']))),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,

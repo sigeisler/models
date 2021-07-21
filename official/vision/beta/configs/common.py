@@ -15,7 +15,7 @@
 # Lint as: python3
 """Common configurations."""
 
-from typing import Optional
+from typing import Optional, List
 # Import libraries
 
 import dataclasses
@@ -32,6 +32,7 @@ class RandAugment(hyperparams.Config):
   cutout_const: float = 40
   translate_const: float = 10
   prob_to_apply: Optional[float] = None
+  exclude_ops: List[str] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass

@@ -116,7 +116,8 @@ class Parser(parser.Parser):
             magnitude=aug_type.randaug.magnitude,
             cutout_const=aug_type.randaug.cutout_const,
             translate_const=aug_type.randaug.translate_const,
-            prob_to_apply=aug_type.randaug.prob_to_apply)
+            prob_to_apply=aug_type.randaug.prob_to_apply,
+            exclude_ops=aug_type.randaug.exclude_ops)
       else:
         raise ValueError('Augmentation policy {} not supported.'.format(
             aug_type.type))

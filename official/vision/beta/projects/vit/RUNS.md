@@ -29,9 +29,9 @@ PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/
 
 # Runs
 
-# 01 - DEIT: Check how it goes
+# 01 - VIT: Check how it goes
 
-Unfortunately it was without dropout and with random augment....
+_Unfortunately it was without dropout and with random augment..._
 ```
 PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/vision/beta/projects/vit/train.py \
   --experiment=vit_imagenet_pretrain \
@@ -41,7 +41,7 @@ PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/
   --model_dir=gs://jaeyounkim-simongeisler/runs/01 |& tee -a /buckets/runs/01/log.txt
 ```
 
-# 02 - DEIT: Check how it goes
+# 02 - VIT: Check how it goes
 
 ```
 PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/vision/beta/projects/vit/train.py \
@@ -55,7 +55,7 @@ PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/
 # 03 - DEIT: Check how it goes
 ```
 PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/vision/beta/projects/vit/train.py \
-  --experiment=deit_imagenet_pretrain \
+  --experiment=deit_imagenet_pretrain_noaug \
   --mode train_and_eval \
   --tpu=jaeyounkim-simongeisler-1 \
   --params_override="{runtime: {distribution_strategy: tpu}, task: {train_data: {input_path: '', tfds_name: imagenet2012, tfds_split: train, tfds_data_dir: gs://jaeyounkim-simongeisler}, validation_data: {input_path: '', tfds_name: imagenet2012, tfds_split: validation, tfds_data_dir: gs://jaeyounkim-simongeisler}}}" \
