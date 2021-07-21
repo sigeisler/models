@@ -295,10 +295,21 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
   cutout_center_width = tf.random.uniform(
       shape=[], minval=0, maxval=image_width, dtype=tf.int32)
 
-  lower_pad = tf.maximum(0, cutout_center_height - pad_size)
-  upper_pad = tf.maximum(0, image_height - cutout_center_height - pad_size)
-  left_pad = tf.maximum(0, cutout_center_width - pad_size)
-  right_pad = tf.maximum(0, image_width - cutout_center_width - pad_size)
+  image = _fill_rectangle(image, cutout_center_width, cutout_center_height,
+                          pad_size, pad_size, replace)
+
+  return image
+
+
+def _fill_rectangle(image, center_width, center_height, half_width,
+                    half_height, replace=None):
+  image_height = tf.shape(image)[0]
+  image_width = tf.shape(image)[1]
+
+  lower_pad = tf.maximum(0, center_height - half_height)
+  upper_pad = tf.maximum(0, image_height - center_height - half_height)
+  left_pad = tf.maximum(0, center_width - half_width)
+  right_pad = tf.maximum(0, image_width - center_width - half_width)
 
   cutout_shape = [
       image_height - (lower_pad + upper_pad),
@@ -311,9 +322,13 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
       constant_values=1)
   mask = tf.expand_dims(mask, -1)
   mask = tf.tile(mask, [1, 1, 3])
-  image = tf.where(
-      tf.equal(mask, 0),
-      tf.ones_like(image, dtype=image.dtype) * replace, image)
+
+  if replace is None:
+    fill = tf.random.normal(tf.shape(image), dtype=image.dtype)
+  else:
+    fill = tf.ones_like(image, dtype=image.dtype) * replace
+  image = tf.where(tf.equal(mask, 0), fill, image)
+
   return image
 
 
@@ -731,7 +746,8 @@ def _apply_func_with_prob(func: Any, image: tf.Tensor, args: Any, prob: float):
 
 def select_and_apply_random_policy(policies: Any, image: tf.Tensor):
   """Select a random policy from `policies` and apply it to `image`."""
-  policy_to_select = tf.random.uniform([], maxval=len(policies), dtype=tf.int32)
+  policy_to_select = tf.random.uniform(
+      [], maxval=len(policies), dtype=tf.int32)
   # Note that using tf.case instead of tf.conds would result in significantly
   # larger graphs and would even break export for some larger policies.
   for (i, policy) in enumerate(policies):
@@ -775,12 +791,14 @@ REPLACE_FUNCS = frozenset({
 def level_to_arg(cutout_const: float, translate_const: float):
   """Creates a dict mapping image operation names to their arguments."""
 
-  no_arg = lambda level: ()
-  posterize_arg = lambda level: _mult_to_arg(level, 4)
-  solarize_arg = lambda level: _mult_to_arg(level, 256)
-  solarize_add_arg = lambda level: _mult_to_arg(level, 110)
-  cutout_arg = lambda level: _mult_to_arg(level, cutout_const)
-  translate_arg = lambda level: _translate_level_to_arg(level, translate_const)
+  def no_arg(level): return ()
+  def posterize_arg(level): return _mult_to_arg(level, 4)
+  def solarize_arg(level): return _mult_to_arg(level, 256)
+  def solarize_add_arg(level): return _mult_to_arg(level, 110)
+  def cutout_arg(level): return _mult_to_arg(level, cutout_const)
+
+  def translate_arg(level): return _translate_level_to_arg(
+      level, translate_const)
 
   args = {
       'AutoContrast': no_arg,
@@ -805,9 +823,15 @@ def level_to_arg(cutout_const: float, translate_const: float):
 
 def _parse_policy_info(name: Text, prob: float, level: float,
                        replace_value: List[int], cutout_const: float,
-                       translate_const: float) -> Tuple[Any, float, Any]:
+                       translate_const: float, level_std: float = 0.
+                       ) -> Tuple[Any, float, Any]:
   """Return the function that corresponds to `name` and update `level` param."""
   func = NAME_TO_FUNC[name]
+
+  if level_std > 0:
+    level += tf.random.normal([], dtype=tf.float32)
+    level = tf.clip_by_value(level, 0., _MAX_LEVEL)
+
   args = level_to_arg(cutout_const, translate_const)[name](level)
 
   if name in REPLACE_FUNCS:
@@ -960,6 +984,7 @@ class AutoAugment(ImageAugment):
         tf_policy.append(_parse_policy_info(*policy_info))
       # Now build the tf policy that will apply the augmentation procedue
       # on image.
+
       def make_final_policy(tf_policy_):
 
         def final_policy(image_):
@@ -1184,6 +1209,7 @@ class RandAugment(ImageAugment):
                magnitude: float = 10.,
                cutout_const: float = 40.,
                translate_const: float = 100.,
+               magnitude_std: float = 0.0,
                prob_to_apply: Optional[float] = None):
     """Applies the RandAugment policy to images.
 
@@ -1196,6 +1222,8 @@ class RandAugment(ImageAugment):
         [5, 10].
       cutout_const: multiplier for applying cutout.
       translate_const: multiplier for applying translation.
+      magnitude_std: randomness of the severity as proposed by the authors of
+        the timm library.
       prob_to_apply: The probability to apply the selected augmentation at each
         layer.
     """
@@ -1212,6 +1240,7 @@ class RandAugment(ImageAugment):
         'Color', 'Contrast', 'Brightness', 'Sharpness', 'ShearX', 'ShearY',
         'TranslateX', 'TranslateY', 'Cutout', 'SolarizeAdd'
     ]
+    self.magnitude_std = magnitude_std
 
   def distort(self, image: tf.Tensor) -> tf.Tensor:
     """Applies the RandAugment policy to `image`.
@@ -1246,7 +1275,8 @@ class RandAugment(ImageAugment):
                                  dtype=tf.float32)
         func, _, args = _parse_policy_info(op_name, prob, self.magnitude,
                                            replace_value, self.cutout_const,
-                                           self.translate_const)
+                                           self.translate_const,
+                                           self.magnitude_std)
         branch_fns.append((
             i,
             # pylint:disable=g-long-lambda
@@ -1266,4 +1296,65 @@ class RandAugment(ImageAugment):
       image = aug_image
 
     image = tf.cast(image, dtype=input_image_type)
+    return image
+
+
+class RandomErasing(ImageAugment):
+
+  def __init__(self, probability: float = 0.25, min_area: float = 0.02,
+               max_area: float = 1 / 3, min_aspect: float = 0.3,
+               max_aspect=None, min_count=1, max_count=1, trials=10):
+    self._probability = probability
+    self._min_area = float(min_area)
+    self._max_area = float(max_area)
+    self._min_log_aspect = math.log(min_aspect)
+    self._max_log_aspect = math.log(max_aspect or 1 / min_aspect)
+    self._min_count = min_count
+    self._max_count = max_count
+    self._trials = trials
+
+  def distort(self, image: tf.Tensor) -> tf.Tensor:
+    uniform_random = tf.random.uniform(shape=[], minval=0., maxval=1.0)
+    mirror_cond = tf.less(uniform_random, .5)
+    tf.cond(mirror_cond, lambda: self._erase(image), lambda: image)
+    return image
+
+  @tf.function
+  def _erase(self, image: tf.Tensor) -> tf.Tensor:
+    count = self._min_count if self._min_count == self._max_count else \
+        tf.random.uniform(shape=[], minval=int(self._min_count),
+                          maxval=int(self._max_count - self._min_count + 1),
+                          dtype=tf.int32)
+
+    image_height = tf.shape(image)[0]
+    image_width = tf.shape(image)[1]
+    area = tf.cast(image_width * image_height, tf.float32)
+
+    for _ in range(count):
+      for _ in range(self._trials):
+        erase_area = tf.random.uniform(shape=[],
+                                       minval=area * self._min_area,
+                                       maxval=area * self._max_area)
+        aspect_ratio = tf.math.exp(tf.random.uniform(
+            shape=[], minval=self._min_log_aspect,
+            maxval=self._max_log_aspect))
+
+        half_height = tf.cast(tf.math.round(tf.math.sqrt(
+            erase_area * aspect_ratio) / 2), dtype=tf.int32)
+        half_width = tf.cast(tf.math.round(tf.math.sqrt(
+            erase_area / aspect_ratio) / 2), dtype=tf.int32)
+
+        if 2 * half_height < image_height and 2 * half_width < image_width:
+          center_height = tf.random.uniform(
+              shape=[], minval=0, maxval=int(image_height - 2 * half_height),
+              dtype=tf.int32)
+          center_width = tf.random.uniform(
+              shape=[], minval=0, maxval=int(image_width - 2 * half_width),
+              dtype=tf.int32)
+
+          image = _fill_rectangle(image, center_width, center_height,
+                                  half_width, half_height, replace=None)
+
+          break
+
     return image

@@ -43,6 +43,19 @@ class AutoAugment(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class RandomErasing(hyperparams.Config):
+  """Configuration for AutoAugment."""
+  probability: float = 0.25
+  min_area: float = 0.02
+  max_area: float = 1 / 3
+  min_aspect: float = 0.3
+  max_aspect = None
+  min_count = 1
+  max_count = 1
+  trials = 10
+
+
+@dataclasses.dataclass
 class Augmentation(hyperparams.OneOfConfig):
   """Configuration for input data augmentation.
 
