@@ -121,6 +121,7 @@ class Encoder(tf.keras.layers.Layer):
                kernel_regularizer=None,
                inputs_positions=None,
                init_stochastic_depth_rate=0.0,
+               kernel_initializer='glorot_uniform',
                **kwargs):
     super().__init__(**kwargs)
     self._num_layers = num_layers
@@ -131,6 +132,7 @@ class Encoder(tf.keras.layers.Layer):
     self._kernel_regularizer = kernel_regularizer
     self._inputs_positions = inputs_positions
     self._init_stochastic_depth_rate = init_stochastic_depth_rate
+    self._kernel_initializer = kernel_initializer
 
   def build(self, input_shape):
     self._pos_embed = AddPositionEmbs(
@@ -149,6 +151,7 @@ class Encoder(tf.keras.layers.Layer):
           output_dropout=self._dropout_rate,
           attention_dropout=self._attention_dropout_rate,
           kernel_regularizer=self._kernel_regularizer,
+          kernel_initializer=self._kernel_initializer,
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
               self._init_stochastic_depth_rate, i, self._num_layers - 1),
           norm_epsilon=1e-6)
@@ -181,7 +184,8 @@ class VisionTransformer(tf.keras.Model):
                hidden_size=768,
                representation_size=0,
                classifier='token',
-               kernel_regularizer=None):
+               kernel_regularizer=None,
+               original_init=True):
     """VisionTransformer initialization function."""
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
@@ -190,7 +194,8 @@ class VisionTransformer(tf.keras.Model):
         kernel_size=patch_size,
         strides=patch_size,
         padding='valid',
-        kernel_regularizer=kernel_regularizer)(
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer='lecun_normal' if original_init else 'he_uniform')(
             inputs)
     if tf.keras.backend.image_data_format() == 'channels_last':
       rows_axis, cols_axis = (1, 2)
@@ -216,6 +221,8 @@ class VisionTransformer(tf.keras.Model):
         dropout_rate=dropout_rate,
         attention_dropout_rate=attention_dropout_rate,
         kernel_regularizer=kernel_regularizer,
+        kernel_initializer='glorot_uniform' if original_init else dict(
+            name='TruncatedNormal', config=dict(stddev=.02)),
         init_stochastic_depth_rate=init_stochastic_depth_rate)(
             x)
 
@@ -228,7 +235,8 @@ class VisionTransformer(tf.keras.Model):
       x = tf.keras.layers.Dense(
           representation_size,
           kernel_regularizer=kernel_regularizer,
-          name='pre_logits')(
+          name='pre_logits',
+          kernel_initializer='lecun_normal' if original_init else 'he_uniform')(
               x)
       x = tf.nn.tanh(x)
     else:
@@ -267,4 +275,5 @@ def build_vit(input_specs,
       hidden_size=backbone_cfg.hidden_size,
       representation_size=backbone_cfg.representation_size,
       classifier=backbone_cfg.classifier,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      original_init=backbone_cfg.original_init)

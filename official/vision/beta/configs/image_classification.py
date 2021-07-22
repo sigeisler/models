@@ -65,6 +65,7 @@ class ImageClassificationModel(hyperparams.Config):
       use_sync_bn=False)
   # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
   add_head_batch_norm: bool = False
+  kernel_initializer: str = 'random_uniform'
 
 
 @dataclasses.dataclass

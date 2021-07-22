@@ -44,6 +44,7 @@ class ImageClassificationModel(hyperparams.Config):
       use_sync_bn=False)
   # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
   add_head_batch_norm: bool = False
+  kernel_initializer: str = 'random_uniform'
 
 
 @dataclasses.dataclass
@@ -91,6 +92,8 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
           model=ImageClassificationModel(
               num_classes=1001,
               input_size=[224, 224, 3],
+              original_init=False,
+              kernel_initializer='zeros',
               backbone=backbones.Backbone(
                   type='vit',
                   vit=backbones.VisionTransformer(
@@ -158,6 +161,8 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
           model=ImageClassificationModel(
               num_classes=1001,
               input_size=[224, 224, 3],
+              original_init=False,
+              kernel_initializer='zeros',
               backbone=backbones.Backbone(
                   type='vit',
                   vit=backbones.VisionTransformer(
@@ -229,6 +234,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
           model=ImageClassificationModel(
               num_classes=1001,
               input_size=[224, 224, 3],
+              kernel_initializer='zeros',
               backbone=backbones.Backbone(
                   type='vit',
                   vit=backbones.VisionTransformer(
