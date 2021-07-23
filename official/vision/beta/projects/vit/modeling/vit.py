@@ -222,7 +222,7 @@ class VisionTransformer(tf.keras.Model):
         attention_dropout_rate=attention_dropout_rate,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer='glorot_uniform' if original_init else dict(
-            name='TruncatedNormal', config=dict(stddev=.02)),
+            class_name='TruncatedNormal', config=dict(stddev=.02)),
         init_stochastic_depth_rate=init_stochastic_depth_rate)(
             x)
 

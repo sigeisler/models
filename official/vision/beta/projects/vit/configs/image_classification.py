@@ -83,22 +83,23 @@ task_factory.register_task_cls(ImageClassificationTask)(
 @exp_factory.register_config_factory('deit_imagenet_pretrain_noaug')
 def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
-  train_batch_size = 1024
-  eval_batch_size = 1024
-  repeated_aug = 3
+  train_batch_size = 4096  # 1024
+  eval_batch_size = 4096  # 1024
+  repeated_aug = 1
   steps_per_epoch = IMAGENET_TRAIN_EXAMPLES * repeated_aug // train_batch_size
   config = cfg.ExperimentConfig(
       task=ImageClassificationTask(
           model=ImageClassificationModel(
               num_classes=1001,
               input_size=[224, 224, 3],
-              original_init=False,
               kernel_initializer='zeros',
               backbone=backbones.Backbone(
                   type='vit',
                   vit=backbones.VisionTransformer(
-                      model_name='vit-b16', representation_size=768,
-                      init_stochastic_depth_rate=0.1,
+                      model_name='vit-b16',
+                      representation_size=768,
+                      init_stochastic_depth_rate=0,
+                      original_init=False,
                       transformer=backbones.Transformer(
                           dropout_rate=0.0, attention_dropout_rate=0.0)))),
           losses=Losses(l2_weight_decay=0.0, label_smoothing=0.1),
@@ -106,7 +107,8 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
-              repeated_aug=repeated_aug),
+              repeated_aug=repeated_aug,
+              color_jitter=0.4),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
@@ -129,7 +131,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
               'learning_rate': {
                   'type': 'cosine',
                   'cosine': {
-                      'initial_learning_rate': 0.001,
+                      'initial_learning_rate': 0.0005 * train_batch_size / 512,
                       'decay_steps': 300 * steps_per_epoch,
                   }
               },
@@ -154,19 +156,20 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
   train_batch_size = 1024
   eval_batch_size = 1024
-  repeated_aug = 1
+  repeated_aug = 3
   steps_per_epoch = IMAGENET_TRAIN_EXAMPLES * repeated_aug // train_batch_size
   config = cfg.ExperimentConfig(
       task=ImageClassificationTask(
           model=ImageClassificationModel(
               num_classes=1001,
               input_size=[224, 224, 3],
-              original_init=False,
               kernel_initializer='zeros',
               backbone=backbones.Backbone(
                   type='vit',
                   vit=backbones.VisionTransformer(
-                      model_name='vit-b16', representation_size=768,
+                      model_name='vit-b16',
+                      original_init=False,
+                      representation_size=768,
                       init_stochastic_depth_rate=0.1,
                       transformer=backbones.Transformer(
                           dropout_rate=0.0, attention_dropout_rate=0.0)))),
@@ -203,7 +206,7 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
               'learning_rate': {
                   'type': 'cosine',
                   'cosine': {
-                      'initial_learning_rate': 0.001,
+                      'initial_learning_rate': 0.0005 * train_batch_size / 512,
                       'decay_steps': 300 * steps_per_epoch,
                   }
               },

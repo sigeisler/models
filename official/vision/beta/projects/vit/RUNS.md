@@ -20,7 +20,7 @@ PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/
 DEIT base:
 ```
 PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/vision/beta/projects/vit/train.py \
-  --experiment=deit_imagenet_pretrain \
+  --experiment=deit_imagenet_pretrain_noaug \
   --mode train_and_eval \
   --tpu=jaeyounkim-simongeisler-1 \
   --params_override="{runtime: {distribution_strategy: tpu}, task: {train_data: {global_batch_size: 16, input_path: '', tfds_name: imagenet2012, tfds_split: train}, validation_data: {global_batch_size: 16, input_path: '', tfds_name: imagenet2012, tfds_split: validation}}}" \
@@ -69,5 +69,5 @@ PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/
   --mode train_and_eval \
   --tpu=jaeyounkim-simongeisler-1 \
   --params_override="{runtime: {distribution_strategy: tpu}, task: {train_data: {input_path: '', tfds_name: imagenet2012, tfds_split: train, tfds_data_dir: gs://jaeyounkim-simongeisler}, validation_data: {input_path: '', tfds_name: imagenet2012, tfds_split: validation, tfds_data_dir: gs://jaeyounkim-simongeisler}}}" \
-  --model_dir=gs://jaeyounkim-simongeisler/runs/deit-01 |& tee -a /buckets/runs/deit-01/log.txt
+  --model_dir=gs://jaeyounkim-simongeisler/runs/deit-01-noaug |& tee -a /buckets/runs/deit-01-noaug/log.txt
 ```
