@@ -56,6 +56,16 @@ PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/
   --model_dir=gs://$RUNS/vit-03 |& tee -a /buckets/runs/vit-03/log.txt
 ```
 
+# VIT- 03: Check how it goes
+```
+PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/vision/beta/projects/vit/train.py \
+  --experiment=vit_imagenet_pretrain_deitinit \
+  --mode train_and_eval \
+  --tpu=$TPU \
+  --params_override="{runtime: {distribution_strategy: tpu}, task: {train_data: {input_path: '', tfds_name: imagenet2012, tfds_split: train, tfds_data_dir: gs://$DATA}, validation_data: {input_path: '', tfds_name: imagenet2012, tfds_split: validation, tfds_data_dir: gs://$DATA}}}" \
+  --model_dir=gs://$RUNS/vit-04-deitinit |& tee -a /buckets/runs/vit-04-deitinit/log.txt
+```
+
 # DEIT-01: Check how it goes
 ```
 python3 train.py \
