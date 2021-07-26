@@ -369,11 +369,11 @@ def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   return config
 
 
-@exp_factory.register_config_factory('deit_imagenet_pretrain')
+@exp_factory.register_config_factory('deit_imagenet_pretrain_sd_randa_erase_repa')
 def image_classification_imagenet_vit_pretrain() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
-  train_batch_size = 1024
-  eval_batch_size = 1024
+  train_batch_size = 4096  # 1024
+  eval_batch_size = 4096  # 1024
   repeated_aug = 3
   steps_per_epoch = IMAGENET_TRAIN_EXAMPLES * repeated_aug // train_batch_size
   config = cfg.ExperimentConfig(
