@@ -1210,7 +1210,8 @@ class RandAugment(ImageAugment):
                cutout_const: float = 40.,
                translate_const: float = 100.,
                magnitude_std: float = 0.0,
-               prob_to_apply: Optional[float] = None):
+               prob_to_apply: Optional[float] = None,
+               exclude_ops: List[str] = []):
     """Applies the RandAugment policy to images.
 
     Args:
@@ -1226,6 +1227,7 @@ class RandAugment(ImageAugment):
         the timm library.
       prob_to_apply: The probability to apply the selected augmentation at each
         layer.
+      exclude_ops: exclude selected operations.
     """
     super(RandAugment, self).__init__()
 
@@ -1241,6 +1243,8 @@ class RandAugment(ImageAugment):
         'TranslateX', 'TranslateY', 'Cutout', 'SolarizeAdd'
     ]
     self.magnitude_std = magnitude_std
+    self.available_ops = [
+        op for op in self.available_ops if op not in exclude_ops]
 
   def distort(self, image: tf.Tensor) -> tf.Tensor:
     """Applies the RandAugment policy to `image`.
