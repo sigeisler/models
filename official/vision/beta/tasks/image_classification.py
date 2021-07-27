@@ -26,6 +26,7 @@ from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import tfds_classification_decoders
 from official.vision.beta.modeling import factory
+from official.vision.beta.ops import augment
 
 
 @task_factory.register_task_cls(exp_cfg.ImageClassificationTask)
@@ -112,11 +113,22 @@ class ImageClassificationTask(base_task.Task):
         is_multilabel=is_multilabel,
         dtype=params.dtype)
 
+    postprocess_fn = None
+    if params.mixup_and_cutmix:
+      postprocess_fn = augment.MixupAndCutmix(
+          mixup_alpha=params.mixup_and_cutmix.mixup_alpha,
+          cutmix_alpha=params.mixup_and_cutmix.cutmix_alpha,
+          prob=params.mixup_and_cutmix.prob,
+          label_smoothing=params.mixup_and_cutmix.label_smoothing,
+          num_classes=params.mixup_and_cutmix.num_classes
+      )
+
     reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
-        parser_fn=parser.parse_fn(params.is_training))
+        parser_fn=parser.parse_fn(params.is_training),
+        postprocess_fn=postprocess_fn)
 
     dataset = reader.read(input_context=input_context)
 
@@ -146,6 +158,11 @@ class ImageClassificationTask(base_task.Task):
             model_outputs,
             from_logits=True,
             label_smoothing=losses_config.label_smoothing)
+      if losses_config.soft_labels:
+        total_loss = tf.nn.softmax_cross_entropy_with_logits(
+            labels,
+            model_outputs
+        )
       else:
         total_loss = tf.keras.losses.sparse_categorical_crossentropy(
             labels, model_outputs, from_logits=True)
@@ -167,7 +184,8 @@ class ImageClassificationTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
     if not is_multilabel:
       k = self.task_config.evaluation.top_k
-      if self.task_config.losses.one_hot:
+      if (self.task_config.losses.one_hot
+              or self.task_config.losses.soft_labels):
         metrics = [
             tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
             tf.keras.metrics.TopKCategoricalAccuracy(

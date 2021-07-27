@@ -15,8 +15,8 @@ export PYTHONPATH=/home/simon/models
 ```
 
 ```
-export DATA=gsoc-21-vit/tensorflow_datasets
-export RUNS=gsoc-21-vit/runs
+export DATA=jaeyounkim-simongeisler
+export RUNS=jaeyounkim-simongeisler/runs
 export TPU=jaeyounkim-simongeisler-1
 export PYTHONPATH=/home/simongeisler/models
 ```
