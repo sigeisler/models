@@ -253,7 +253,10 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(KeyError, '\'AAAAA\''):
       augmenter.distort(image)
 
-  def test_random_erase(self):
+
+class RandomErasingTest(tf.test.TestCase, parameterized.TestCase):
+
+  def test_random_erase_replaces_some_pixels(self):
     image = tf.zeros((224, 224, 3), dtype=tf.float32)
     augmenter = augment.RandomErasing(probability=1., max_count=10)
 
@@ -261,6 +264,58 @@ class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual((224, 224, 3), aug_image.shape)
     self.assertLess(0, tf.reduce_max(aug_image.shape))
+
+
+class MixupAndCutmixTest(tf.test.TestCase, parameterized.TestCase):
+
+  def test_mixup_and_cutmix_smoothes_labels(self):
+    batch_size = 12
+    number_classes = 1000
+    label_smoothing = 0.1
+    images = tf.random.normal((batch_size, 224, 224, 3), dtype=tf.float32)
+    labels = tf.range(batch_size)
+    augmenter = augment.MixupAndCutmix(
+        number_classes=number_classes, label_smoothing=label_smoothing)
+
+    aug_images, aug_labels = augmenter.distort(images, labels)
+
+    self.assertEqual(images.shape, aug_images.shape)
+    self.assertEqual(images.dtype, aug_images.dtype)
+    self.assertEqual([batch_size, number_classes], aug_labels.shape)
+    self.assertAllLessEqual(
+        aug_labels, 1. - label_smoothing + 1. / number_classes)
+    self.assertAllGreaterEqual(
+        aug_labels, label_smoothing / number_classes - 1e4)  # With tolerance
+
+  def test_mixup_changes_image(self):
+    batch_size = 12
+    number_classes = 1000
+    images = tf.random.normal((batch_size, 224, 224, 3), dtype=tf.float32)
+    labels = tf.range(batch_size)
+    augmenter = augment.MixupAndCutmix(
+        mixup_alpha=1., cutmix_alpha=0., number_classes=number_classes)
+
+    aug_images, aug_labels = augmenter.distort(images, labels)
+
+    self.assertEqual(images.shape, aug_images.shape)
+    self.assertEqual(images.dtype, aug_images.dtype)
+    self.assertEqual([batch_size, number_classes], aug_labels.shape)
+    self.assertTrue(not tf.math.reduce_all(images == aug_images))
+
+  def test_cutmix_changes_image(self):
+    batch_size = 12
+    number_classes = 1000
+    images = tf.random.normal((batch_size, 224, 224, 3), dtype=tf.float32)
+    labels = tf.range(batch_size)
+    augmenter = augment.MixupAndCutmix(
+        mixup_alpha=0., cutmix_alpha=1., number_classes=number_classes)
+
+    aug_images, aug_labels = augmenter.distort(images, labels)
+
+    self.assertEqual(images.shape, aug_images.shape)
+    self.assertEqual(images.dtype, aug_images.dtype)
+    self.assertEqual([batch_size, number_classes], aug_labels.shape)
+    self.assertTrue(not tf.math.reduce_all(images == aug_images))
 
 
 if __name__ == '__main__':
