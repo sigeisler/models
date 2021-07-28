@@ -48,7 +48,7 @@ python3 train.py \
 
 # VIT- 03: Check how it goes
 ```
-PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/vision/beta/projects/vit/train.py \
+python3 train.py \
   --experiment=vit_imagenet_pretrain \
   --mode train_and_eval \
   --tpu=$TPU \
@@ -56,9 +56,9 @@ PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/
   --model_dir=gs://$RUNS/vit-03 |& tee -a /buckets/runs/vit-03/log.txt
 ```
 
-# VIT- 03: Check how it goes
+# VIT- 04: DEIT init
 ```
-PYTHONPATH=/home/simongeisler/models python3 /home/simongeisler/models/official/vision/beta/projects/vit/train.py \
+python3 train.py \
   --experiment=vit_imagenet_pretrain_deitinit \
   --mode train_and_eval \
   --tpu=$TPU \

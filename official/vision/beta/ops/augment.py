@@ -325,6 +325,8 @@ def _fill_rectangle(image, center_width, center_height, half_width,
 
   if replace is None:
     fill = tf.random.normal(tf.shape(image), dtype=image.dtype)
+  elif isinstance(replace, tf.Tensor):
+    fill = replace
   else:
     fill = tf.ones_like(image, dtype=image.dtype) * replace
   image = tf.where(tf.equal(mask, 0), fill, image)
@@ -1320,7 +1322,7 @@ class RandomErasing(ImageAugment):
   def distort(self, image: tf.Tensor) -> tf.Tensor:
     uniform_random = tf.random.uniform(shape=[], minval=0., maxval=1.0)
     mirror_cond = tf.less(uniform_random, .5)
-    tf.cond(mirror_cond, lambda: self._erase(image), lambda: image)
+    tf.cond(mirror_cond, self._erase, lambda: image)
     return image
 
   @tf.function
@@ -1362,3 +1364,108 @@ class RandomErasing(ImageAugment):
           break
 
     return image
+
+
+class MixupAndCutmix:
+
+  def __init__(self, mixup_alpha=.8, cutmix_alpha=1., prob=1.0,
+               switch_prob=0.5, label_smoothing=0.1, num_classes=1000):
+    self.mixup_alpha = mixup_alpha
+    self.cutmix_alpha = cutmix_alpha
+    self.mix_prob = prob
+    self.switch_prob = switch_prob
+    self.label_smoothing = label_smoothing
+    self.num_classes = num_classes
+    self.mode = 'batch'
+    self.mixup_enabled = True
+
+    if self.mixup_alpha and not self.cutmix_alpha:
+      self.switch_prob = -1
+    elif not self.mixup_alpha and self.cutmix_alpha:
+      self.switch_prob = 1
+
+  def __call__(self, images: tf.Tensor,
+               labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    return self.distort(images, labels)
+
+  def distort(self, images: tf.Tensor,
+              labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    augment_cond = tf.less(tf.random.uniform(shape=[], minval=0., maxval=1.0),
+                           self.mix_prob)
+
+    return tf.cond(
+        augment_cond,
+        lambda: self.update_labels(*tf.cond(
+            tf.less(tf.random.uniform(
+                shape=[], minval=0., maxval=1.0), self.switch_prob),
+            lambda: self.cutmix(images, labels),
+            lambda: self.mixup(images, labels)
+        )),
+        lambda: (images, self.smooth_labels(labels))
+    )
+
+  @staticmethod
+  def _sample_from_beta(alpha: float, beta: float, shape: tuple):
+    sample_alpha = tf.random.gamma(shape, 1., beta=alpha)
+    sample_beta = tf.random.gamma(shape, 1., beta=beta)
+    return sample_alpha / (sample_alpha + sample_beta)
+
+  def cutmix(self, images: tf.Tensor,
+             labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    lam = MixupAndCutmix._sample_from_beta(
+        self.cutmix_alpha, self.cutmix_alpha, labels.shape)
+
+    ratio = tf.math.sqrt(1 - lam)
+
+    batch_size = tf.shape(images)[0]
+    image_height, image_width = tf.shape(images)[1], tf.shape(images)[2]
+
+    cut_height = tf.cast(
+        ratio * tf.cast(image_height, dtype=tf.float32), dtype=tf.int32)
+    cut_width = tf.cast(
+        ratio * tf.cast(image_height, dtype=tf.float32), dtype=tf.int32)
+
+    random_center_height = tf.random.uniform(
+        shape=[batch_size], minval=0, maxval=image_height, dtype=tf.int32)
+    random_center_width = tf.random.uniform(
+        shape=[batch_size], minval=0, maxval=image_width, dtype=tf.int32)
+
+    bbox_area = cut_height * cut_width
+    lam = 1. - bbox_area / (image_height * image_width)
+    lam = tf.cast(lam, dtype=tf.float32)
+
+    images = tf.map_fn(
+        lambda x: _fill_rectangle(*x),
+        (images, random_center_width, random_center_height, cut_width // 2,
+            cut_height // 2, tf.reverse(images, [0])),
+        dtype=(tf.float32, tf.int32, tf.int32, tf.int32, tf.int32, tf.float32),
+        fn_output_signature=tf.TensorSpec(images.shape[1:], dtype=tf.float32))
+
+    return images, labels, lam
+
+  def mixup(self, images: tf.Tensor,
+            labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    lam = MixupAndCutmix._sample_from_beta(
+        self.mixup_alpha, self.mixup_alpha, labels.shape)
+    lam = tf.reshape(lam, [-1, 1, 1, 1])
+    images = lam * images + (1. - lam) * tf.reverse(images, [0])
+
+    return images, labels, tf.squeeze(lam)
+
+  def smooth_labels(self, labels: tf.Tensor):
+    off_value = self.label_smoothing / self.num_classes
+    on_value = 1. - self.label_smoothing + off_value
+
+    smooth_labels = tf.one_hot(labels, self.num_classes,
+                               on_value=on_value, off_value=off_value)
+    return smooth_labels
+
+  def update_labels(self, images: tf.Tensor, labels: tf.Tensor,
+                    lam: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    labels_1 = self.smooth_labels(labels)
+    labels_2 = tf.reverse(labels_1, [0])
+
+    lam = tf.reshape(lam, [-1, 1])
+    labels = lam * labels_1 + (1. - lam) * labels_2
+
+    return images, labels

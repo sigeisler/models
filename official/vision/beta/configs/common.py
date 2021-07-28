@@ -45,7 +45,7 @@ class AutoAugment(hyperparams.Config):
 
 @dataclasses.dataclass
 class RandomErasing(hyperparams.Config):
-  """Configuration for AutoAugment."""
+  """Configuration for RandomErasing."""
   probability: float = 0.25
   min_area: float = 0.02
   max_area: float = 1 / 3
@@ -54,6 +54,17 @@ class RandomErasing(hyperparams.Config):
   min_count = 1
   max_count = 1
   trials = 10
+
+
+@dataclasses.dataclass
+class MixupAndCutmix(hyperparams.Config):
+  """Configuration for MixupAndCutmix."""
+  mixup_alpha: float = .8
+  cutmix_alpha: float = 1.
+  prob: float = 1.0
+  switch_prob: float = 0.5
+  label_smoothing: float = 0.1
+  num_classes: int = 1000
 
 
 @dataclasses.dataclass
