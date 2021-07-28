@@ -412,7 +412,12 @@ def image_classification_imagenet_deit_imagenet_pretrain_noaug_sd_erase_randa_mi
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
-              global_batch_size=eval_batch_size)),
+              global_batch_size=eval_batch_size,
+              mixup_and_cutmix=common.MixupAndCutmix(
+                  num_classes=num_classes,
+                  label_smoothing=0.0,
+                  prob=0,
+              ))),
       trainer=cfg.TrainerConfig(
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,
