@@ -528,6 +528,7 @@ def image_classification_imagenet_deit_imagenet_pretrain_noaug_sd_randacomplete(
 
   return config
 
+
 @exp_factory.register_config_factory('deit_imagenet_pretrain_sd_randa_erase_repa')
 def image_classification_imagenet_deit_imagenet_pretrain_sd_randa_erase_repa() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
@@ -603,7 +604,6 @@ def image_classification_imagenet_deit_imagenet_pretrain_sd_randa_erase_repa() -
   return config
 
 
-
 @exp_factory.register_config_factory('deit_imagenet_pretrain_sd_erase_randa_mixupandcutmix_repa')
 def image_classification_imagenet_deit_imagenet_pretrain_sd_erase_randa_mixupandcutmix_repa() -> cfg.ExperimentConfig:
   """Image classification on imagenet with vision transformer."""
@@ -645,7 +645,12 @@ def image_classification_imagenet_deit_imagenet_pretrain_sd_erase_randa_mixupand
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
-              global_batch_size=eval_batch_size)),
+              global_batch_size=eval_batch_size,
+              mixup_and_cutmix=common.MixupAndCutmix(
+                  num_classes=num_classes,
+                  label_smoothing=0.0,
+                  prob=0,
+              ))),
       trainer=cfg.TrainerConfig(
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,
