@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""AutoAugment and RandAugment policies for enhanced image/video preprocessing.
+"""Augmentation policies for enhanced image/video preprocessing.
 
 AutoAugment Reference: https://arxiv.org/abs/1805.09501
 RandAugment Reference: https://arxiv.org/abs/1909.13719
+RandomErasing Reference: https://arxiv.org/abs/1708.04896
+MixupAndCutmix:
+  - Mixup: https://arxiv.org/abs/1710.09412
+  - Cutmix: https://arxiv.org/abs/1905.04899
+
+RandomErasing, Mixup and Cutmix are inspired by https://github.com/rwightman/pytorch-image-models
+
 """
 import math
 from typing import Any, List, Iterable, Optional, Text, Tuple
@@ -1306,10 +1313,36 @@ class RandAugment(ImageAugment):
 
 
 class RandomErasing(ImageAugment):
+  """Applies RandomErasing to a single image.
+
+  Reference: https://arxiv.org/abs/1708.04896
+
+  Implementaion is inspired by https://github.com/rwightman/pytorch-image-models
+  """
 
   def __init__(self, probability: float = 0.25, min_area: float = 0.02,
                max_area: float = 1 / 3, min_aspect: float = 0.3,
                max_aspect=None, min_count=1, max_count=1, trials=10):
+    """Applies RandomErasing to a single image.
+
+    Args:
+      probability (float, optional): Probability of augmenting the image.
+        Defaults to 0.25.
+      min_area (float, optional): Minimum area of the random erasing
+        rectangle. Defaults to 0.02.
+      max_area (float, optional): Maximum area of the random erasing
+        rectangle. Defaults to 1/3.
+      min_aspect (float, optional): Minimum aspect rate of the random erasing
+        rectangle. Defaults to 0.3.
+      max_aspect ([type], optional): Maximum aspect rate of the random
+        erasing rectangle. Defaults to None.
+      min_count (int, optional): Minimum number of erased
+        rectangles. Defaults to 1.
+      max_count (int, optional):  Maximum number of erased
+        rectangles. Defaults to 1.
+      trials (int, optional): Maximum number of trials to randomly sample a
+        rectangle that fulfills constraint. Defaults to 10.
+    """
     self._probability = probability
     self._min_area = float(min_area)
     self._max_area = float(max_area)
@@ -1320,6 +1353,14 @@ class RandomErasing(ImageAugment):
     self._trials = trials
 
   def distort(self, image: tf.Tensor) -> tf.Tensor:
+    """Applies RandomErasing to single `image`.
+
+    Args:
+      image (tf.Tensor): Of shape [height, width, 3] representing an image.
+
+    Returns:
+      tf.Tensor: The augmented version of `image`.
+    """
     uniform_random = tf.random.uniform(shape=[], minval=0., maxval=1.0)
     mirror_cond = tf.less(uniform_random, .5)
     tf.cond(mirror_cond, self._erase, lambda: image)
@@ -1367,9 +1408,33 @@ class RandomErasing(ImageAugment):
 
 
 class MixupAndCutmix:
+  """Applies Mixup and/or Cutmix to a batch of images.
 
-  def __init__(self, mixup_alpha=.8, cutmix_alpha=1., prob=1.0,
-               switch_prob=0.5, label_smoothing=0.1, num_classes=1000):
+  - Mixup: https://arxiv.org/abs/1710.09412
+  - Cutmix: https://arxiv.org/abs/1905.04899
+
+  Implementaion is inspired by https://github.com/rwightman/pytorch-image-models
+  """
+
+  def __init__(self, mixup_alpha: float = .8, cutmix_alpha: float = 1.,
+               prob: float = 1.0, switch_prob: float = 0.5,
+               label_smoothing: float = 0.1, num_classes: int = 1001):
+    """Applies Mixup and/or Cutmix to a batch of images.
+
+    Args:
+      mixup_alpha (float, optional): For drawing a random lambda (`lam`) from a
+        beta distribution (for each image). If zero Mixup is deactivated.
+        Defaults to .8.
+      cutmix_alpha (float, optional): For drawing a random lambda (`lam`) from
+        a beta distribution (for each image). If zero Cutmix is deactivated.
+        Defaults to 1..
+      prob (float, optional): Of augmenting the batch. Defaults to 1.0.
+      switch_prob (float, optional): Probability of applying Cutmix for the
+        batch. Defaults to 0.5.
+      label_smoothing (float, optional): Constant for label smoothing. Defaults
+        to 0.1.
+      num_classes (int, optional): Number of classes. Defaults to 1001.
+    """
     self.mixup_alpha = mixup_alpha
     self.cutmix_alpha = cutmix_alpha
     self.mix_prob = prob
@@ -1390,6 +1455,19 @@ class MixupAndCutmix:
 
   def distort(self, images: tf.Tensor,
               labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    """Applies Mixup and/or Cutmix to batch of `images` and transforms the
+      `labels` (incl. label smoothing).
+
+    Args:
+      images (tf.Tensor): Of shape [batch_size,height, width, 3] representing
+        a batch of image.
+      labels (tf.Tensor): Of shape [batch_size, ] representing the class id for
+        each image of the batch.
+
+    Returns:
+      Tuple[tf.Tensor, tf.Tensor]: The augmented version of `image` and
+        `labels`.
+    """
     augment_cond = tf.less(tf.random.uniform(shape=[], minval=0., maxval=1.0),
                            self.mix_prob)
 
@@ -1398,10 +1476,10 @@ class MixupAndCutmix:
         lambda: self.update_labels(*tf.cond(
             tf.less(tf.random.uniform(
                 shape=[], minval=0., maxval=1.0), self.switch_prob),
-            lambda: self.cutmix(images, labels),
-            lambda: self.mixup(images, labels)
+            lambda: self._cutmix(images, labels),
+            lambda: self._mixup(images, labels)
         )),
-        lambda: (images, self.smooth_labels(labels))
+        lambda: (images, self._smooth_labels(labels))
     )
 
   @staticmethod
@@ -1410,8 +1488,8 @@ class MixupAndCutmix:
     sample_beta = tf.random.gamma(shape, 1., beta=beta)
     return sample_alpha / (sample_alpha + sample_beta)
 
-  def cutmix(self, images: tf.Tensor,
-             labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+  def _cutmix(self, images: tf.Tensor,
+              labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     lam = MixupAndCutmix._sample_from_beta(
         self.cutmix_alpha, self.cutmix_alpha, labels.shape)
 
@@ -1443,8 +1521,8 @@ class MixupAndCutmix:
 
     return images, labels, lam
 
-  def mixup(self, images: tf.Tensor,
-            labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+  def _mixup(self, images: tf.Tensor,
+             labels: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     lam = MixupAndCutmix._sample_from_beta(
         self.mixup_alpha, self.mixup_alpha, labels.shape)
     lam = tf.reshape(lam, [-1, 1, 1, 1])
@@ -1452,7 +1530,7 @@ class MixupAndCutmix:
 
     return images, labels, tf.squeeze(lam)
 
-  def smooth_labels(self, labels: tf.Tensor):
+  def _smooth_labels(self, labels: tf.Tensor) -> tf.Tensor:
     off_value = self.label_smoothing / self.num_classes
     on_value = 1. - self.label_smoothing + off_value
 
@@ -1460,9 +1538,9 @@ class MixupAndCutmix:
                                on_value=on_value, off_value=off_value)
     return smooth_labels
 
-  def update_labels(self, images: tf.Tensor, labels: tf.Tensor,
-                    lam: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-    labels_1 = self.smooth_labels(labels)
+  def _update_labels(self, images: tf.Tensor, labels: tf.Tensor,
+                     lam: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    labels_1 = self._smooth_labels(labels)
     labels_2 = tf.reverse(labels_1, [0])
 
     lam = tf.reshape(lam, [-1, 1])
