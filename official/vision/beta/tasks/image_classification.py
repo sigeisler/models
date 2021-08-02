@@ -16,6 +16,7 @@
 from typing import Any, Optional, List, Tuple
 from absl import logging
 import tensorflow as tf
+from tensorflow.python.ops.gen_array_ops import one_hot
 
 from official.common import dataset_fn
 from official.core import base_task
@@ -137,12 +138,15 @@ class ImageClassificationTask(base_task.Task):
   def build_losses(self,
                    labels: tf.Tensor,
                    model_outputs: tf.Tensor,
+                   is_validation: bool,
                    aux_losses: Optional[Any] = None) -> tf.Tensor:
     """Builds sparse categorical cross entropy loss.
 
     Args:
       labels: Input groundtruth labels.
       model_outputs: Output logits of the classifier.
+      is_validation: To handle that some augmentations need custom soft labels
+        while the validation should remain unchainged.
       aux_losses: The auxiliarly loss tensors, i.e. `losses` in tf.keras.Model.
 
     Returns:
@@ -152,13 +156,15 @@ class ImageClassificationTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
 
     if not is_multilabel:
-      if losses_config.one_hot:
+      # Some augmentation need custom soft labels in training, but validation
+      # should remain unchainged
+      if losses_config.one_hot or is_validation:
         total_loss = tf.keras.losses.categorical_crossentropy(
             labels,
             model_outputs,
             from_logits=True,
             label_smoothing=losses_config.label_smoothing)
-      if losses_config.soft_labels:
+      elif losses_config.soft_labels:
         total_loss = tf.nn.softmax_cross_entropy_with_logits(
             labels,
             model_outputs
@@ -246,8 +252,8 @@ class ImageClassificationTask(base_task.Task):
           lambda x: tf.cast(x, tf.float32), outputs)
 
       # Computes per-replica loss.
-      loss = self.build_losses(
-          model_outputs=outputs, labels=labels, aux_losses=model.losses)
+      loss = self.build_losses(model_outputs=outputs, labels=labels,
+                               is_validation=False, aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
       scaled_loss = loss / num_replicas
@@ -290,14 +296,16 @@ class ImageClassificationTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+    one_hot = self.task_config.losses.one_hot
+    soft_labels = self.task_config.losses.soft_labels
     is_multilabel = self.task_config.train_data.is_multilabel
-    if self.task_config.losses.one_hot and not is_multilabel:
+    if (one_hot or soft_labels) and not is_multilabel:
       labels = tf.one_hot(labels, self.task_config.model.num_classes)
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
     loss = self.build_losses(model_outputs=outputs, labels=labels,
-                             aux_losses=model.losses)
+                             is_validation=True, aux_losses=model.losses)
 
     logs = {self.loss: loss}
     if metrics:
