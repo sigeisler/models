@@ -153,6 +153,15 @@ python3 train.py \
 
 ```
 python3 train.py \
+  --experiment=deit_imagenet_pretrain_sd_erase_randa_cutmix \
+  --mode train_and_eval \
+  --tpu=$TPU \
+  --params_override="{runtime: {distribution_strategy: tpu}, task: {train_data: {input_path: '', tfds_name: imagenet2012, tfds_split: train, tfds_data_dir: gs://$DATA}, validation_data: {input_path: '', tfds_name: imagenet2012, tfds_split: validation, tfds_data_dir: gs://$DATA}}}" \
+  --model_dir=gs://$RUNS/deit-12-sd-randa-erase-cutmix |& tee -a /buckets/runs/deit-12-sd-randa-erase-cutmix/log.txt
+```
+
+```
+python3 train.py \
   --experiment=deit_imagenet_pretrain_sd_erase_randa_mixupandcutmix_sanity \
   --mode train_and_eval \
   --tpu=$TPU \
@@ -176,6 +185,15 @@ python3 train.py \
   --tpu=$TPU \
   --params_override="{runtime: {distribution_strategy: tpu}, task: {train_data: {input_path: '', tfds_name: imagenet2012, tfds_split: train, tfds_data_dir: gs://$DATA}, validation_data: {input_path: '', tfds_name: imagenet2012, tfds_split: validation, tfds_data_dir: gs://$DATA}}}" \
   --model_dir=gs://$RUNS/deit-08-sd-randa-mixupandcutmix-repa |& tee -a /buckets/runs/deit-08-sd-randa-mixupandcutmix-repa/log.txt
+```
+
+```
+{ python3 train.py \
+  --experiment=deit_imagenet_pretrain_sd_erase_randa_mixupandcutmix_repa \
+  --mode train_and_eval \
+  --tpu=$TPU \
+  --params_override="{runtime: {distribution_strategy: tpu}, task: {train_data: {input_path: '', tfds_name: imagenet2012, tfds_split: train, tfds_data_dir: gs://$DATA}, validation_data: {input_path: '', tfds_name: imagenet2012, tfds_split: validation, tfds_data_dir: gs://$DATA}}}" \
+  --model_dir=gs://$RUNS/deit-14-sd-randa-mixupandcutmix-repa |& tee -a /buckets/runs/deit-14-sd-randa-mixupandcutmix-repa/log.txt ;} && ctpu pause --tpu-only --noconf
 ```
 
 ```
