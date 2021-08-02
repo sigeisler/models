@@ -1473,7 +1473,7 @@ class MixupAndCutmix:
 
     return tf.cond(
         augment_cond,
-        lambda: self.update_labels(*tf.cond(
+        lambda: self._update_labels(*tf.cond(
             tf.less(tf.random.uniform(
                 shape=[], minval=0., maxval=1.0), self.switch_prob),
             lambda: self._cutmix(images, labels),
