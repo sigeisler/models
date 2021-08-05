@@ -12,22 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 """Build simclr models."""
-
 from typing import Optional
 from absl import logging
 
@@ -90,14 +75,15 @@ class SimCLRModel(tf.keras.Model):
 
     if training and self._mode == PRETRAIN:
       num_transforms = 2
+      # Split channels, and optionally apply extra batched augmentation.
+      # (bsz, h, w, c*num_transforms) -> [(bsz, h, w, c), ....]
+      features_list = tf.split(
+          inputs, num_or_size_splits=num_transforms, axis=-1)
+      # (num_transforms * bsz, h, w, c)
+      features = tf.concat(features_list, 0)
     else:
       num_transforms = 1
-
-    # Split channels, and optionally apply extra batched augmentation.
-    # (bsz, h, w, c*num_transforms) -> [(bsz, h, w, c), ....]
-    features_list = tf.split(inputs, num_or_size_splits=num_transforms, axis=-1)
-    # (num_transforms * bsz, h, w, c)
-    features = tf.concat(features_list, 0)
+      features = inputs
 
     # Base network forward pass.
     endpoints = self._backbone(features, training=training)
@@ -132,12 +118,12 @@ class SimCLRModel(tf.keras.Model):
   def checkpoint_items(self):
     """Returns a dictionary of items to be additionally checkpointed."""
     if self._supervised_head is not None:
-      items = dict(backbone=self.backbone,
-                   projection_head=self.projection_head,
-                   supervised_head=self.supervised_head)
+      items = dict(
+          backbone=self.backbone,
+          projection_head=self.projection_head,
+          supervised_head=self.supervised_head)
     else:
-      items = dict(backbone=self.backbone,
-                   projection_head=self.projection_head)
+      items = dict(backbone=self.backbone, projection_head=self.projection_head)
     return items
 
   @property

@@ -15,6 +15,8 @@
 """Transformer-based text encoder network."""
 # pylint: disable=g-classes-have-attributes
 import collections
+
+from absl import logging
 import tensorflow as tf
 
 from official.modeling import activations
@@ -47,8 +49,6 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
     num_layers: The number of transformer layers.
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
-    sequence_length: [Deprecated]. TODO(hongkuny): remove this argument once no
-      user is using it.
     max_sequence_length: The maximum sequence length that this encoder can
       consume. If None, max_sequence_length uses the value from sequence length.
       This determines the variable shape for positional embeddings.
@@ -77,6 +77,9 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
       parameter is originally added for ELECTRA model which needs to tie the
       generator embeddings with the discriminator embeddings.
     dict_outputs: Whether to use a dictionary as the model outputs.
+    norm_first: Whether to normalize inputs to attention and intermediate
+      dense layers. If set False, output of attention and intermediate dense
+      layers is normalized.
   """
 
   def __init__(self,
@@ -84,7 +87,6 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
                hidden_size=768,
                num_layers=12,
                num_attention_heads=12,
-               sequence_length=None,
                max_sequence_length=512,
                type_vocab_size=16,
                intermediate_size=3072,
@@ -97,6 +99,7 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
                embedding_width=None,
                embedding_layer=None,
                dict_outputs=False,
+               norm_first=False,
                **kwargs):
 
     # b/164516224
@@ -120,7 +123,13 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
         initializer=initializer,
         output_range=output_range,
         embedding_width=embedding_width,
-        embedding_layer=embedding_layer)
+        embedding_layer=embedding_layer,
+        norm_first=norm_first)
+    if 'sequence_length' in kwargs:
+      kwargs.pop('sequence_length')
+      logging.warning('`sequence_length` is a deprecated argument to '
+                      '`BertEncoder`, which has no effect for a while. Please '
+                      'remove `sequence_length` argument.')
 
     self._embedding_layer_instance = embedding_layer
 

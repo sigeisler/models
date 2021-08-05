@@ -105,6 +105,7 @@ def run_experiment(
       (save_summary) else None,
       summary_interval=params.trainer.summary_interval if
       (save_summary) else None,
+      train_actions=actions.get_train_actions(params, trainer, model_dir),
       eval_actions=actions.get_eval_actions(params, trainer, model_dir))
 
   logging.info('Starts to execute mode: %s', mode)
@@ -136,6 +137,11 @@ def run_experiment(
   if num_params is not None:
     logging.info('Number of trainable params in model: %f Millions.',
                  num_params / 10.**6)
+
+  flops = train_utils.try_count_flops(trainer.model)
+  if flops is not None:
+    logging.info('FLOPs (multi-adds) in model: %f Billions.',
+                 flops / 10.**9 / 2)
 
   if run_post_eval:
     with distribution_strategy.scope():

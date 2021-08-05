@@ -15,10 +15,9 @@
 # Lint as: python3
 """Mask R-CNN configuration definition."""
 
+import dataclasses
 import os
 from typing import List, Optional
-
-import dataclasses
 
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -78,6 +77,9 @@ class DataConfig(cfg.DataConfig):
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
   file_type: str = 'tfrecord'
+  drop_remainder: bool = True
+  # Number of examples in the data set, it's used to create the annotation file.
+  num_examples: int = -1
 
 
 @dataclasses.dataclass
@@ -215,7 +217,8 @@ class Losses(hyperparams.Config):
 class MaskRCNNTask(cfg.TaskConfig):
   model: MaskRCNN = MaskRCNN()
   train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
+  validation_data: DataConfig = DataConfig(is_training=False,
+                                           drop_remainder=False)
   losses: Losses = Losses()
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
@@ -260,7 +263,8 @@ def fasterrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
-              global_batch_size=eval_batch_size)),
+              global_batch_size=eval_batch_size,
+              drop_remainder=False)),
       trainer=cfg.TrainerConfig(
           train_steps=22500,
           validation_steps=coco_val_samples // eval_batch_size,
@@ -324,7 +328,8 @@ def maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
-              global_batch_size=eval_batch_size)),
+              global_batch_size=eval_batch_size,
+              drop_remainder=False)),
       trainer=cfg.TrainerConfig(
           train_steps=22500,
           validation_steps=coco_val_samples // eval_batch_size,
@@ -401,7 +406,8 @@ def maskrcnn_spinenet_coco() -> cfg.ExperimentConfig:
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
-              global_batch_size=eval_batch_size)),
+              global_batch_size=eval_batch_size,
+              drop_remainder=False)),
       trainer=cfg.TrainerConfig(
           train_steps=steps_per_epoch * 350,
           validation_steps=coco_val_samples // eval_batch_size,
@@ -486,7 +492,8 @@ def cascadercnn_spinenet_coco() -> cfg.ExperimentConfig:
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
-              global_batch_size=eval_batch_size)),
+              global_batch_size=eval_batch_size,
+              drop_remainder=False)),
       trainer=cfg.TrainerConfig(
           train_steps=steps_per_epoch * 500,
           validation_steps=coco_val_samples // eval_batch_size,

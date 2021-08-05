@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""TFM binary for the progressive trainer."""
-
+"""Trainer binary for multitask simclr."""
 from absl import app
 from absl import flags
 import gin
 
 from official.common import distribute_utils
-# pylint: disable=unused-import
-from official.common import registry_imports
-# pylint: enable=unused-import
 from official.common import flags as tfm_flags
-from official.core import task_factory
 from official.core import train_utils
 from official.modeling import performance
-from official.modeling.progressive import train_lib
+from official.modeling.multitask import multitask
+from official.modeling.multitask import train_lib
+
+# pylint: disable=unused-import
+from official.vision.beta.projects.simclr.common import registry_imports
+from official.vision.beta.projects.simclr.configs import multitask_config
+from official.vision.beta.projects.simclr.modeling import multitask_model
+# pylint: enable=unused-import
 
 FLAGS = flags.FLAGS
 
@@ -50,19 +52,22 @@ def main(_):
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,
-      tpu_address=params.runtime.tpu,
-      **params.runtime.model_parallelism())
+      tpu_address=params.runtime.tpu)
+
   with distribution_strategy.scope():
-    task = task_factory.get_task(params.task, logging_dir=model_dir)
+    tasks = multitask.MultiTask.from_config(params.task)
+    model = multitask_model.SimCLRMTModel(params.task.model)
 
   train_lib.run_experiment(
       distribution_strategy=distribution_strategy,
-      task=task,
+      task=tasks,
+      model=model,
       mode=FLAGS.mode,
       params=params,
       model_dir=model_dir)
 
   train_utils.save_gin_config(FLAGS.mode, model_dir)
+
 
 if __name__ == '__main__':
   tfm_flags.define_flags()

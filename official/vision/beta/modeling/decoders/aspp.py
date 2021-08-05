@@ -13,12 +13,15 @@
 # limitations under the License.
 
 """Contains definitions of Atrous Spatial Pyramid Pooling (ASPP) decoder."""
-from typing import Any, List, Optional, Mapping
+from typing import Any, List, Mapping, Optional
 
 # Import libraries
+
 import tensorflow as tf
 
+from official.modeling import hyperparams
 from official.vision import keras_cv
+from official.vision.beta.modeling.decoders import factory
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -39,6 +42,7 @@ class ASPP(tf.keras.layers.Layer):
       kernel_initializer: str = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       interpolation: str = 'bilinear',
+      use_depthwise_convolution: bool = False,
       **kwargs):
     """Initializes an Atrous Spatial Pyramid Pooling (ASPP) layer.
 
@@ -61,6 +65,8 @@ class ASPP(tf.keras.layers.Layer):
       interpolation: A `str` of interpolation method. It should be one of
         `bilinear`, `nearest`, `bicubic`, `area`, `lanczos3`, `lanczos5`,
         `gaussian`, or `mitchellcubic`.
+      use_depthwise_convolution: If True depthwise separable convolutions will
+        be added to the Atrous spatial pyramid pooling.
       **kwargs: Additional keyword arguments to be passed.
     """
     super(ASPP, self).__init__(**kwargs)
@@ -77,6 +83,7 @@ class ASPP(tf.keras.layers.Layer):
         'kernel_initializer': kernel_initializer,
         'kernel_regularizer': kernel_regularizer,
         'interpolation': interpolation,
+        'use_depthwise_convolution': use_depthwise_convolution,
     }
 
   def build(self, input_shape):
@@ -97,7 +104,9 @@ class ASPP(tf.keras.layers.Layer):
         dropout=self._config_dict['dropout_rate'],
         kernel_initializer=self._config_dict['kernel_initializer'],
         kernel_regularizer=self._config_dict['kernel_regularizer'],
-        interpolation=self._config_dict['interpolation'])
+        interpolation=self._config_dict['interpolation'],
+        use_depthwise_convolution=self._config_dict['use_depthwise_convolution']
+    )
 
   def call(self, inputs: Mapping[str, tf.Tensor]) -> Mapping[str, tf.Tensor]:
     """Calls the Atrous Spatial Pyramid Pooling (ASPP) layer on an input.
@@ -128,3 +137,46 @@ class ASPP(tf.keras.layers.Layer):
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
+
+
+@factory.register_decoder_builder('aspp')
+def build_aspp_decoder(
+    input_specs: Mapping[str, tf.TensorShape],
+    model_config: hyperparams.Config,
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
+  """Builds ASPP decoder from a config.
+
+  Args:
+    input_specs: A `dict` of input specifications. A dictionary consists of
+      {level: TensorShape} from a backbone. Note this is for consistent
+        interface, and is not used by ASPP decoder.
+    model_config: A OneOfConfig. Model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+      None.
+
+  Returns:
+    A `tf.keras.Model` instance of the ASPP decoder.
+
+  Raises:
+    ValueError: If the model_config.decoder.type is not `aspp`.
+  """
+  del input_specs  # input_specs is not used by ASPP decoder.
+  decoder_type = model_config.decoder.type
+  decoder_cfg = model_config.decoder.get()
+  if decoder_type != 'aspp':
+    raise ValueError(f'Inconsistent decoder type {decoder_type}. '
+                     'Need to be `aspp`.')
+
+  norm_activation_config = model_config.norm_activation
+  return ASPP(
+      level=decoder_cfg.level,
+      dilation_rates=decoder_cfg.dilation_rates,
+      num_filters=decoder_cfg.num_filters,
+      pool_kernel_size=decoder_cfg.pool_kernel_size,
+      dropout_rate=decoder_cfg.dropout_rate,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      activation=norm_activation_config.activation,
+      kernel_regularizer=l2_regularizer)

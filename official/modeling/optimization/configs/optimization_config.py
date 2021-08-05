@@ -52,6 +52,7 @@ class OptimizerConfig(oneof.OneOfConfig):
   lars: opt_cfg.LARSConfig = opt_cfg.LARSConfig()
   adagrad: opt_cfg.AdagradConfig = opt_cfg.AdagradConfig()
   slide: opt_cfg.SLIDEConfig = opt_cfg.SLIDEConfig()
+  adafactor: opt_cfg.AdafactorConfig = opt_cfg.AdafactorConfig()
 
 
 @dataclasses.dataclass
@@ -69,6 +70,7 @@ class LrConfig(oneof.OneOfConfig):
     power_linear: learning rate config of step^power followed by
       step^power*linear.
     power_with_offset: power decay with a step offset.
+    step_cosine_with_offset: Step cosine with a step offset.
   """
   type: Optional[str] = None
   constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
@@ -81,6 +83,8 @@ class LrConfig(oneof.OneOfConfig):
       lr_cfg.PowerAndLinearDecayLrConfig())
   power_with_offset: lr_cfg.PowerDecayWithOffsetLrConfig = (
       lr_cfg.PowerDecayWithOffsetLrConfig())
+  step_cosine_with_offset: lr_cfg.StepCosineLrConfig = (
+      lr_cfg.StepCosineLrConfig())
 
 
 @dataclasses.dataclass

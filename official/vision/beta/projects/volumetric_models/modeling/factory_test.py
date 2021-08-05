@@ -17,19 +17,23 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
+# pylint: disable=unused-import
 from official.vision.beta.projects.volumetric_models.configs import semantic_segmentation_3d as exp_cfg
+from official.vision.beta.projects.volumetric_models.modeling import backbones
+from official.vision.beta.projects.volumetric_models.modeling import decoders
 from official.vision.beta.projects.volumetric_models.modeling import factory
-from official.vision.beta.projects.volumetric_models.modeling.backbones import unet_3d  # pylint: disable=unused-import
 
 
 class SegmentationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters(((128, 128, 128), 5e-5), ((64, 64, 64), None))
-  def test_unet3d_builder(self, input_size, weight_decay):
+  @parameterized.parameters(((128, 128, 128), 5e-5, True),
+                            ((64, 64, 64), None, False))
+  def test_unet3d_builder(self, input_size, weight_decay, use_bn):
     num_classes = 3
     input_specs = tf.keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], input_size[2], 3])
     model_config = exp_cfg.SemanticSegmentationModel3D(num_classes=num_classes)
+    model_config.head.use_batch_normalization = use_bn
     l2_regularizer = (
         tf.keras.regularizers.l2(weight_decay) if weight_decay else None)
     model = factory.build_segmentation_model_3d(
