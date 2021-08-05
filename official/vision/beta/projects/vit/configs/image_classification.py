@@ -52,7 +52,6 @@ class Losses(hyperparams.Config):
   one_hot: bool = True
   label_smoothing: float = 0.0
   l2_weight_decay: float = 0.0
-  # TODO: this field is required now vision/beta/tasks/image_classification.py
   soft_labels: bool = False
 
 
